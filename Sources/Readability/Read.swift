@@ -619,8 +619,14 @@ public class Readability {
 			contentScore += min(Int(floor(Double(innerText.count / 100))), 3)
 			
 			/* Add the score to the parent. The grandparent gets half. */
-            var parentCurrentScore = Int(try! parentNode!.attr("readability"))!
-            var grandParentCurrentScore = Int(try! grandParentNode!.attr("readability"))!
+			var parentCurrentScore = Int(0)
+			var grandParentCurrentScore = Int(0)
+			if parentNode != nil {
+				parentCurrentScore = Int(try! parentNode!.attr("readability"))!
+			}
+			if grandParentNode != nil {
+				grandParentCurrentScore = Int(try! grandParentNode!.attr("readability"))!
+			}
             
             parentCurrentScore += contentScore
             

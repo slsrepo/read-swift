@@ -96,23 +96,24 @@ public class Readability {
     public init(html: String, url: String? = nil) {
         self.url = url
 
-			// when converting code blocks containing highlight spans, whitespace surrounded by span tags can get stripped
+        // when converting code blocks containing highlight spans, whitespace surrounded by span tags can get stripped
         // This removes the surrounding span tags
-			  self.html = html.replacingOccurrences(of: #"<span[^>]*?>([\n\t ]+)</span>"#, with: "$1", options: .regularExpression)
+        self.html = html.replacingOccurrences(of: #"<span[^>]*?>([\n\t ]+)</span>"#, with: "$1", options: .regularExpression)
 
         /* Turn all double <br>s into <p>s */
-			  self.html = self.html.replacingOccurrences(of: regexps["replaceBrs"]!, with: "</p><p>")
+        self.html = self.html.replacingOccurrences(of: regexps["replaceBrs"]!, with: "</p><p>")
         self.html = self.html.replacingOccurrences(of: regexps["replaceFonts"]!, with: "<$1span>")
 
         if self.html.trimmingCharacters(in: .whitespacesAndNewlines) == "" {
             self.html = "<html></html>"
         }
-        // HTML is fine at this point
+
         if url != nil {
-            dom = try! SwiftSoup.parse(html, url!)
+            dom = try! SwiftSoup.parse(self.html, url!)
         } else {
-            dom = try! SwiftSoup.parse(html)
+            dom = try! SwiftSoup.parse(self.html)
         }
+        cleanRougeTables()
     }
 
     /**
@@ -223,6 +224,22 @@ public class Readability {
     public func postProcessContent(_ articleContent: Element) {
         if convertLinksToFootnotes && url!.matches("/wikipedia\\.org/") {
             addFootnotes(articleContent)
+        }
+    }
+
+    private func cleanRougeTables() {
+        do {
+            let rougeTables = try dom.getElementsByClass("rouge-table").array()
+            if rougeTables.count > 0 {
+                for table in rougeTables {
+                    let code = try table.getElementsByClass("rouge-code").array()[0]
+                    let content = try getInnerText(code.getElementsByTag("pre").array()[0])
+                    let parent = table.parent()
+                    try parent?.text(content)
+                }
+            }
+        } catch let error {
+            print(error)
         }
     }
 

@@ -60,6 +60,7 @@ public class Readability {
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
 	  public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
+	  public var includeAnswerComments = false // on a stack site, include comments in the output
     private var body: Element? //
     private var bodyCache: String? // Cache the body HTML in case we need to re-use it later
 
@@ -159,9 +160,10 @@ public class Readability {
 		let questionComments = try! question.select(".js-post-comments-component .comments .comments-list .comment-body")
 
 		try! articleContent.append(questionContent.html())
-		try! articleContent.append("<hr>")
-		try! articleContent.append(questionComments.html())
-
+		if includeAnswerComments {
+			try! articleContent.append("<hr>")
+			try! articleContent.append(questionComments.html())
+		}
 
 		let answersDiv = try! main.select("#answers")
 		let answersTitleEl = try! answersDiv.select("#answers-header .answers-subheader h2").first()!
@@ -185,8 +187,11 @@ public class Readability {
 
 			try! articleContent.append("<h3>Accepted Answer</h3>")
 			try! articleContent.append(acceptedAnswerBody.html())
+			if includeAnswerComments {
+				try! articleContent.append("<h4>Comments</h4>")
+				try! articleContent.append(acceptedAnswerComments.html())
+			}
 			try! articleContent.append("<hr>")
-			try! articleContent.append(acceptedAnswerComments.html())
 		}
 
 		if !acceptedAnswerOnly {
@@ -194,7 +199,10 @@ public class Readability {
 				try! articleContent.append("<h3>All Answers</h3>")
 				for answer in otherAnswers {
 					try! articleContent.append(try! answer.select(".js-post-body").html())
-					try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+					if includeAnswerComments {
+						try! articleContent.append("<h4>Comments</h4>")
+						try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+					}
 					try! articleContent.append("<hr>")
 				}
 			}

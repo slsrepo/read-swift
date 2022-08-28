@@ -61,6 +61,7 @@ public class Readability {
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
 	  public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
 	  public var includeAnswerComments = false // on a stack site, include comments in the output
+	  public var minimumAnswerUpvotes = 0 // only save answers with a minimum number of upvotes
     private var body: Element? //
     private var bodyCache: String? // Cache the body HTML in case we need to re-use it later
 
@@ -198,12 +199,16 @@ public class Readability {
 			if otherAnswers.count > 0 {
 				try! articleContent.append("<h3>All Answers</h3>")
 				for answer in otherAnswers {
-					try! articleContent.append(try! answer.select(".js-post-body").html())
-					if includeAnswerComments {
-						try! articleContent.append("<h4>Comments</h4>")
-						try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+					let upvotesEl = try! answer.select(".js-vote-count").first()
+					let upvotes = upvotesEl != nil ? Int(try! upvotesEl!.attr("data-value"))! : 0
+					if minimumAnswerUpvotes == 0 || upvotes >= minimumAnswerUpvotes {
+						try! articleContent.append(try! answer.select(".js-post-body").html())
+						if includeAnswerComments {
+							try! articleContent.append("<h4>Comments</h4>")
+							try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+						}
+						try! articleContent.append("<hr>")
 					}
-					try! articleContent.append("<hr>")
 				}
 			}
 		}

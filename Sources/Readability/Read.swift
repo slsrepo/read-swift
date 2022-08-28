@@ -59,7 +59,7 @@ public class Readability {
     public var html: String
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
-
+	  public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
     private var body: Element? //
     private var bodyCache: String? // Cache the body HTML in case we need to re-use it later
 
@@ -116,6 +116,120 @@ public class Readability {
         cleanRougeTables()
     }
 
+	public func stackOverflow(topAnswer: Bool? = false) -> Bool {
+		if dom.ownerDocument() == nil {
+			return false
+		}
+
+		removeScripts(dom)
+
+		// Assume successful outcome
+		success = true
+
+		let bodyElems = try! dom.getElementsByTag("body").array()
+
+		if bodyElems.count > 0 {
+			if bodyCache == nil {
+				bodyCache = try! bodyElems[0].html()
+			}
+
+			if body == nil {
+				let bodyHTML = try! bodyElems[0].html()
+
+				try! body?.html(bodyHTML)
+			}
+		}
+
+		prepDocument()
+
+		/* Build readability's DOM tree */
+		let overlay = try! dom.createElement("div")
+		let innerDiv = try! dom.createElement("div")
+
+		var articleContent = try! dom.createElement("div")
+
+		let main = try! self.dom.getElementsByClass("inner-content").first()!
+		let title = getInnerText(try! main.select("#question-header h1 a.question-hyperlink").first()!)
+
+		let articleTitle = try! dom.createElement("h1")
+		try! articleTitle.text(title)
+
+		let question = try! main.select("#question")
+		let questionContent = try! question.select(".js-post-body").array()[0]
+		let questionComments = try! question.select(".js-post-comments-component .comments .comments-list .comment-body")
+
+		try! articleContent.append(questionContent.html())
+		try! articleContent.append("<hr>")
+		try! articleContent.append(questionComments.html())
+
+
+		let answersDiv = try! main.select("#answers")
+		let answersTitleEl = try! answersDiv.select("#answers-header .answers-subheader h2").first()!
+		let extraSpan = try! answersTitleEl.select("span").last()!
+		try! extraSpan.remove()
+		let answersTitle = getInnerText(answersTitleEl)
+		let acceptedAnswer = try! answersDiv.select(".answer.accepted-answer")
+
+		let otherAnswers = try! answersDiv.select(".answer").not(".accepted-answer").array()
+
+
+		if !acceptedAnswerOnly {
+			try! articleContent.append("<h2>\(answersTitle)</h2>")
+		}
+
+
+		if acceptedAnswer.array().count > 0 {
+
+			let acceptedAnswerBody = try! acceptedAnswer.array()[0].select(".js-post-body")
+			let acceptedAnswerComments = try! acceptedAnswer.array()[0].select(".comments .comments-list .comment-body")
+
+			try! articleContent.append("<h3>Accepted Answer</h3>")
+			try! articleContent.append(acceptedAnswerBody.html())
+			try! articleContent.append("<hr>")
+			try! articleContent.append(acceptedAnswerComments.html())
+		}
+
+		if !acceptedAnswerOnly {
+			if otherAnswers.count > 0 {
+				try! articleContent.append("<h3>All Answers</h3>")
+				for answer in otherAnswers {
+					try! articleContent.append(try! answer.select(".js-post-body").html())
+					try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+					try! articleContent.append("<hr>")
+				}
+			}
+		}
+
+		if getInnerText(articleContent) == "" {
+			success = false
+
+			articleContent = try! dom.createElement("div")
+			try! articleContent.attr("id", "readability-content")
+			try! articleContent.html("<p>Sorry, Readability was unable to parse this page for content.</p>")
+		}
+
+		try! overlay.attr("id", "readOverlay")
+		try! innerDiv.attr("id", "readInner")
+
+		/* Glue the structure of our document together. */
+		try! innerDiv.appendChild(articleTitle)
+		try! innerDiv.appendChild(articleContent)
+		try! overlay.appendChild(innerDiv)
+
+		/* Clear the old HTML, insert the new content. */
+		try! body?.html("")
+		try! body?.appendChild(overlay)
+		try! body?.removeAttr("style")
+
+		postProcessContent(articleContent)
+
+		// Set title and content instance variables
+		self.articleTitle = articleTitle
+		self.articleContent = articleContent
+
+		return success
+	}
+
     /**
      * Get article title element
      * @return DOMElement
@@ -148,6 +262,10 @@ public class Readability {
         if dom.ownerDocument() == nil {
             return false
         }
+
+			if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
+				return stackOverflow()
+			}
 
         removeScripts(dom)
 

@@ -96,9 +96,12 @@ public class Readability {
     public init(html: String, url: String? = nil) {
         self.url = url
 
-        /* Turn all double <br>s into <p>s */
+			// when converting code blocks containing highlight spans, whitespace surrounded by span tags can get stripped
+        // This removes the surrounding span tags
+			  self.html = html.replacingOccurrences(of: #"<span[^>]*?>([\n\t ]+)</span>"#, with: "$1", options: .regularExpression)
 
-        self.html = html.replacingOccurrences(of: regexps["replaceBrs"]!, with: "</p><p>")
+        /* Turn all double <br>s into <p>s */
+			  self.html = self.html.replacingOccurrences(of: regexps["replaceBrs"]!, with: "</p><p>")
         self.html = self.html.replacingOccurrences(of: regexps["replaceFonts"]!, with: "<$1span>")
 
         if self.html.trimmingCharacters(in: .whitespacesAndNewlines) == "" {

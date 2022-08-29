@@ -59,9 +59,12 @@ public class Readability {
     public var html: String
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
-	  public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
-	  public var includeAnswerComments = false // on a stack site, include comments in the output
-	  public var minimumAnswerUpvotes = 0 // only save answers with a minimum number of upvotes
+
+    public var stackExchangeSpecialHandling = true // perform special functions on StackExchange pages
+    public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
+    public var includeAnswerComments = false // on a stack site, include comments in the output
+    public var minimumAnswerUpvotes = 0 // only save answers with a minimum number of upvotes
+
     private var body: Element? //
     private var bodyCache: String? // Cache the body HTML in case we need to re-use it later
 
@@ -276,9 +279,11 @@ public class Readability {
             return false
         }
 
-			if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
-				return stackOverflow()
-			}
+        if stackExchangeSpecialHandling {
+            if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
+                return stackOverflow()
+            }
+        }
 
         removeScripts(dom)
 

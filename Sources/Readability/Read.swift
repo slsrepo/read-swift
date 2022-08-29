@@ -60,10 +60,14 @@ public class Readability {
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
 
-    public var stackExchangeSpecialHandling = true // perform special functions on StackExchange pages
+    public var allSpecialHandling = false // if true, overrides all special handling booleans
+
+    public var stackExchangeSpecialHandling = false // perform special functions on StackExchange pages
     public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
     public var includeAnswerComments = false // on a stack site, include comments in the output
     public var minimumAnswerUpvotes = 0 // only save answers with a minimum number of upvotes
+
+    public var appleDeveloperSpecialHandling = false // perform special functions on StackExchange pages
 
     private var body: Element? //
     private var bodyCache: String? // Cache the body HTML in case we need to re-use it later
@@ -121,130 +125,212 @@ public class Readability {
         cleanRougeTables()
     }
 
-	public func stackOverflow(topAnswer: Bool? = false) -> Bool {
-		if dom.ownerDocument() == nil {
-			return false
-		}
+    public func stackOverflow(topAnswer: Bool? = false) -> Bool {
+        if dom.ownerDocument() == nil {
+            return false
+        }
 
-		removeScripts(dom)
+        removeScripts(dom)
 
-		// Assume successful outcome
-		success = true
+        // Assume successful outcome
+        success = true
 
-		let bodyElems = try! dom.getElementsByTag("body").array()
+        let bodyElems = try! dom.getElementsByTag("body").array()
 
-		if bodyElems.count > 0 {
-			if bodyCache == nil {
-				bodyCache = try! bodyElems[0].html()
-			}
+        if bodyElems.count > 0 {
+            if bodyCache == nil {
+                bodyCache = try! bodyElems[0].html()
+            }
 
-			if body == nil {
-				let bodyHTML = try! bodyElems[0].html()
+            if body == nil {
+                let bodyHTML = try! bodyElems[0].html()
 
-				try! body?.html(bodyHTML)
-			}
-		}
+                try! body?.html(bodyHTML)
+            }
+        }
 
-		prepDocument()
+        prepDocument()
 
-		/* Build readability's DOM tree */
-		let overlay = try! dom.createElement("div")
-		let innerDiv = try! dom.createElement("div")
+        /* Build readability's DOM tree */
+        let overlay = try! dom.createElement("div")
+        let innerDiv = try! dom.createElement("div")
 
-		var articleContent = try! dom.createElement("div")
+        var articleContent = try! dom.createElement("div")
 
-		let main = try! self.dom.getElementsByClass("inner-content").first()!
-		let title = getInnerText(try! main.select("#question-header h1 a.question-hyperlink").first()!)
+        let main = try! dom.getElementsByClass("inner-content").first()!
+        let title = getInnerText(try! main.select("#question-header h1 a.question-hyperlink").first()!)
 
-		let articleTitle = try! dom.createElement("h1")
-		try! articleTitle.text(title)
+        let articleTitle = try! dom.createElement("h1")
+        try! articleTitle.text(title)
 
-		let question = try! main.select("#question")
-		let questionContent = try! question.select(".js-post-body").array()[0]
-		let questionComments = try! question.select(".js-post-comments-component .comments .comments-list .comment-body")
+        let question = try! main.select("#question")
+        let questionContent = try! question.select(".js-post-body").array()[0]
+        let questionComments = try! question.select(".js-post-comments-component .comments .comments-list .comment-body")
 
-		try! articleContent.append(questionContent.html())
-		if includeAnswerComments {
-			try! articleContent.append("<hr>")
-			try! articleContent.append(questionComments.html())
-		}
+        try! articleContent.append(questionContent.html())
+        if includeAnswerComments {
+            try! articleContent.append("<hr>")
+            try! articleContent.append(questionComments.html())
+        }
 
-		let answersDiv = try! main.select("#answers")
-		let answersTitleEl = try! answersDiv.select("#answers-header .answers-subheader h2").first()!
-		let extraSpan = try! answersTitleEl.select("span").last()!
-		try! extraSpan.remove()
-		let answersTitle = getInnerText(answersTitleEl)
-		let acceptedAnswer = try! answersDiv.select(".answer.accepted-answer")
+        let answersDiv = try! main.select("#answers")
+        let answersTitleEl = try! answersDiv.select("#answers-header .answers-subheader h2").first()!
+        let extraSpan = try! answersTitleEl.select("span").last()!
+        try! extraSpan.remove()
+        let answersTitle = getInnerText(answersTitleEl)
+        let acceptedAnswer = try! answersDiv.select(".answer.accepted-answer")
 
-		let otherAnswers = try! answersDiv.select(".answer").not(".accepted-answer").array()
+        let otherAnswers = try! answersDiv.select(".answer").not(".accepted-answer").array()
 
+        if !acceptedAnswerOnly {
+            try! articleContent.append("<h2>\(answersTitle)</h2>")
+        }
 
-		if !acceptedAnswerOnly {
-			try! articleContent.append("<h2>\(answersTitle)</h2>")
-		}
+        if acceptedAnswer.array().count > 0 {
+            let acceptedAnswerBody = try! acceptedAnswer.array()[0].select(".js-post-body")
+            let acceptedAnswerComments = try! acceptedAnswer.array()[0].select(".comments .comments-list .comment-body")
 
+            try! articleContent.append("<h3>Accepted Answer</h3>")
+            try! articleContent.append(acceptedAnswerBody.html())
+            if includeAnswerComments {
+                try! articleContent.append("<h4>Comments</h4>")
+                try! articleContent.append(acceptedAnswerComments.html())
+            }
+            try! articleContent.append("<hr>")
+        }
 
-		if acceptedAnswer.array().count > 0 {
+        if !acceptedAnswerOnly {
+            if otherAnswers.count > 0 {
+                try! articleContent.append("<h3>All Answers</h3>")
+                for answer in otherAnswers {
+                    let upvotesEl = try! answer.select(".js-vote-count").first()
+                    let upvotes = upvotesEl != nil ? Int(try! upvotesEl!.attr("data-value"))! : 0
+                    if minimumAnswerUpvotes == 0 || upvotes >= minimumAnswerUpvotes {
+                        try! articleContent.append(try! answer.select(".js-post-body").html())
+                        if includeAnswerComments {
+                            try! articleContent.append("<h4>Comments</h4>")
+                            try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
+                        }
+                        try! articleContent.append("<hr>")
+                    }
+                }
+            }
+        }
 
-			let acceptedAnswerBody = try! acceptedAnswer.array()[0].select(".js-post-body")
-			let acceptedAnswerComments = try! acceptedAnswer.array()[0].select(".comments .comments-list .comment-body")
+        if getInnerText(articleContent) == "" {
+            success = false
 
-			try! articleContent.append("<h3>Accepted Answer</h3>")
-			try! articleContent.append(acceptedAnswerBody.html())
-			if includeAnswerComments {
-				try! articleContent.append("<h4>Comments</h4>")
-				try! articleContent.append(acceptedAnswerComments.html())
-			}
-			try! articleContent.append("<hr>")
-		}
+            articleContent = try! dom.createElement("div")
+            try! articleContent.attr("id", "readability-content")
+            try! articleContent.html("<p>Sorry, Readability was unable to parse this page for content.</p>")
+        }
 
-		if !acceptedAnswerOnly {
-			if otherAnswers.count > 0 {
-				try! articleContent.append("<h3>All Answers</h3>")
-				for answer in otherAnswers {
-					let upvotesEl = try! answer.select(".js-vote-count").first()
-					let upvotes = upvotesEl != nil ? Int(try! upvotesEl!.attr("data-value"))! : 0
-					if minimumAnswerUpvotes == 0 || upvotes >= minimumAnswerUpvotes {
-						try! articleContent.append(try! answer.select(".js-post-body").html())
-						if includeAnswerComments {
-							try! articleContent.append("<h4>Comments</h4>")
-							try! articleContent.append(try! answer.select(".comments .comments-list .comment .comment-text").html())
-						}
-						try! articleContent.append("<hr>")
-					}
-				}
-			}
-		}
+        try! overlay.attr("id", "readOverlay")
+        try! innerDiv.attr("id", "readInner")
 
-		if getInnerText(articleContent) == "" {
-			success = false
+        /* Glue the structure of our document together. */
+        try! innerDiv.appendChild(articleTitle)
+        try! innerDiv.appendChild(articleContent)
+        try! overlay.appendChild(innerDiv)
 
-			articleContent = try! dom.createElement("div")
-			try! articleContent.attr("id", "readability-content")
-			try! articleContent.html("<p>Sorry, Readability was unable to parse this page for content.</p>")
-		}
+        /* Clear the old HTML, insert the new content. */
+        try! body?.html("")
+        try! body?.appendChild(overlay)
+        try! body?.removeAttr("style")
 
-		try! overlay.attr("id", "readOverlay")
-		try! innerDiv.attr("id", "readInner")
+        postProcessContent(articleContent)
 
-		/* Glue the structure of our document together. */
-		try! innerDiv.appendChild(articleTitle)
-		try! innerDiv.appendChild(articleContent)
-		try! overlay.appendChild(innerDiv)
+        // Set title and content instance variables
+        self.articleTitle = articleTitle
+        self.articleContent = articleContent
 
-		/* Clear the old HTML, insert the new content. */
-		try! body?.html("")
-		try! body?.appendChild(overlay)
-		try! body?.removeAttr("style")
+        return success
+    }
 
-		postProcessContent(articleContent)
+    public func appleDeveloper(topAnswer: Bool? = false) -> Bool {
+        if dom.ownerDocument() == nil {
+            return false
+        }
 
-		// Set title and content instance variables
-		self.articleTitle = articleTitle
-		self.articleContent = articleContent
+        removeScripts(dom)
 
-		return success
-	}
+        // Assume successful outcome
+        success = true
+
+        let bodyElems = try! dom.getElementsByTag("body").array()
+
+        if bodyElems.count > 0 {
+            if bodyCache == nil {
+                bodyCache = try! bodyElems[0].html()
+            }
+
+            if body == nil {
+                let bodyHTML = try! bodyElems[0].html()
+
+                try! body?.html(bodyHTML)
+            }
+        }
+
+        prepDocument()
+
+        /* Build readability's DOM tree */
+        let overlay = try! dom.createElement("div")
+        let innerDiv = try! dom.createElement("div")
+
+        var articleContent = try! dom.createElement("div")
+
+        let main = try! dom.select("#main-content .page").first()!
+        let question = try! main.select("#question-container").first()!
+        let title = getInnerText(try! question.select(".header h1.title").first()!)
+
+        let articleTitle = try! dom.createElement("h1")
+        try! articleTitle.text(title)
+
+        let questionContent = try! question.select("section.question .content .column-right .post-content").array()[0]
+
+        try! articleContent.append(questionContent.html())
+        try! articleContent.append("<hr>")
+
+        let otherAnswers = try! main.select("#answers-list .content-post.answer").array()
+
+        if otherAnswers.count > 0 {
+            try! articleContent.append("<h3>All Answers</h3>")
+            for answer in otherAnswers {
+                try! articleContent.append(try! answer.select(".content .column-right .post-content").html())
+
+                try! articleContent.append("<hr>")
+            }
+        }
+
+        if getInnerText(articleContent) == "" {
+            success = false
+
+            articleContent = try! dom.createElement("div")
+            try! articleContent.attr("id", "readability-content")
+            try! articleContent.html("<p>Sorry, Readability was unable to parse this page for content.</p>")
+        }
+
+        try! overlay.attr("id", "readOverlay")
+        try! innerDiv.attr("id", "readInner")
+
+        /* Glue the structure of our document together. */
+        try! innerDiv.appendChild(articleTitle)
+        try! innerDiv.appendChild(articleContent)
+        try! overlay.appendChild(innerDiv)
+
+        /* Clear the old HTML, insert the new content. */
+        try! body?.html("")
+        try! body?.appendChild(overlay)
+        try! body?.removeAttr("style")
+
+        postProcessContent(articleContent)
+
+        // Set title and content instance variables
+        self.articleTitle = articleTitle
+        self.articleContent = articleContent
+
+        return success
+    }
 
     /**
      * Get article title element
@@ -279,9 +365,17 @@ public class Readability {
             return false
         }
 
-        if stackExchangeSpecialHandling {
+        if stackExchangeSpecialHandling || allSpecialHandling {
             if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
                 return stackOverflow()
+            }
+        }
+
+        let canonical: String? = try! dom.select("head > link[rel=canonical]").first()!.attr("href")
+
+        if appleDeveloperSpecialHandling || allSpecialHandling {
+            if canonical != nil && canonical!.hasPrefix("https://developer.apple.com") {
+                return appleDeveloper()
             }
         }
 
@@ -973,6 +1067,12 @@ public class Readability {
         let scripts = try! doc.getElementsByTag("script").array()
 
         for script in scripts {
+            try! script.parent()?.removeChild(script)
+        }
+
+        let noscripts = try! doc.getElementsByTag("noscript").array()
+
+        for script in noscripts {
             try! script.parent()?.removeChild(script)
         }
     }

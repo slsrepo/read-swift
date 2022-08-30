@@ -485,7 +485,7 @@ public class Readability {
     private func getArticleTitle() -> Element {
         var curTitle = ""
         var origTitle = ""
-			  var h1s = try! dom.getElementsByTag("h1")
+			  let h1s = try! dom.getElementsByTag("h1")
 
 			if h1s.count > 0 {
 				origTitle = getInnerText(h1s.first()!);

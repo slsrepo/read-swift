@@ -7,9 +7,9 @@ let package = Package(
         .library(name: "Readability", targets: ["Readability"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.0.0"),
+        .package(url: "https://github.com/ttscoff/SwiftSoup.git", from: "2.0.0"),
     ],
     targets: [
-    	.target(name: "Readability", dependencies: ["SwiftSoup"])
+        .target(name: "Readability", dependencies: ["SwiftSoup"]),
     ]
 )

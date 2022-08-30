@@ -125,7 +125,9 @@ public class Readability {
         cleanRougeTables()
     }
 
-    public func stackOverflow(topAnswer: Bool? = false) -> Bool {
+	/// Special handling for StackExchange sites
+	/// - Returns: success boolean
+    public func stackOverflow() -> Bool {
         if dom.ownerDocument() == nil {
             return false
         }
@@ -247,7 +249,9 @@ public class Readability {
         return success
     }
 
-    public func appleDeveloper(topAnswer: Bool? = false) -> Bool {
+	/// Special handling for developer.apple.com questions
+	/// - Returns: success boolean
+    public func appleDeveloper() -> Bool {
         if dom.ownerDocument() == nil {
             return false
         }
@@ -481,39 +485,39 @@ public class Readability {
     private func getArticleTitle() -> Element {
         var curTitle = ""
         var origTitle = ""
+			  var h1s = try! dom.getElementsByTag("h1")
 
-        do {
-            origTitle = try getInnerText(dom.getElementsByTag("title").array()[0])
-            curTitle = origTitle
-        } catch let error {
-            print(error)
-        }
+			if h1s.count > 0 {
+				origTitle = getInnerText(h1s.first()!);
+				curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+			} else {
+				do {
+					origTitle = try getInnerText(dom.getElementsByTag("title").array()[0])
+					curTitle = origTitle
 
-        if curTitle.matches("/ [\\|\\-] /") {
-            curTitle = origTitle.replacingOccurrences(of: "/(.*)[\\|\\-] .*/i", with: "$1")
+					if curTitle.matches("/ [|\\-—] /") {
+						curTitle = origTitle.replacingOccurrences(of: "/(.*)[|\\-—] .*/i", with: "$1")
 
-            if curTitle.split(separator: " ").count < 3 {
-                curTitle = origTitle.replacingOccurrences(of: "/[^\\|\\-]*[\\|\\-](.*)/i", with: "$1")
-            }
-        } else if curTitle.range(of: ": ") != nil {
-            curTitle = origTitle.replacingOccurrences(of: "/.*:(.*)/i", with: "$1")
+						if curTitle.split(separator: " ").count < 3 {
+							curTitle = origTitle.replacingOccurrences(of: "/[^|\\-—]*[|\\-—](.*)/i", with: "$1")
+						}
+					} else if curTitle.range(of: ": ") != nil {
+						curTitle = origTitle.replacingOccurrences(of: "/.*:(.*)/i", with: "$1")
 
-            if curTitle.split(separator: " ").count < 3 {
-                curTitle = origTitle.replacingOccurrences(of: "/[^:]*[:](.*)/i", with: "$1")
-            }
-        } else if curTitle.count > 150 || curTitle.count < 15 {
-            let hOnes = try! dom.getElementsByTag("h1").array()
+						if curTitle.split(separator: " ").count < 3 {
+							curTitle = origTitle.replacingOccurrences(of: "/[^:]*:(.*)/i", with: "$1")
+						}
+					}
+				} catch let error {
+					print(error)
+				}
 
-            if hOnes.count == 1 {
-                curTitle = getInnerText(hOnes[0])
-            }
-        }
+				curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if curTitle.split(separator: " ").count <= 4 {
-            curTitle = origTitle
-        }
+				if curTitle.split(separator: " ").count <= 4 {
+					curTitle = origTitle
+				}
+			}
 
         articleTitle = try! dom.createElement("h1")
         try! articleTitle?.html(curTitle)

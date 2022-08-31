@@ -125,8 +125,8 @@ public class Readability {
         cleanRougeTables()
     }
 
-	/// Special handling for StackExchange sites
-	/// - Returns: success boolean
+    /// Special handling for StackExchange sites
+    /// - Returns: success boolean
     public func stackOverflow() -> Bool {
         if dom.ownerDocument() == nil {
             return false
@@ -249,8 +249,8 @@ public class Readability {
         return success
     }
 
-	/// Special handling for developer.apple.com questions
-	/// - Returns: success boolean
+    /// Special handling for developer.apple.com questions
+    /// - Returns: success boolean
     public func appleDeveloper() -> Bool {
         if dom.ownerDocument() == nil {
             return false
@@ -375,7 +375,11 @@ public class Readability {
             }
         }
 
-        let canonical: String? = try! dom.select("head > link[rel=canonical]").first()!.attr("href")
+        let headlinks = try! dom.select("head > link[rel=canonical]")
+        var canonical: String?
+        if headlinks.count > 0 {
+            canonical = try! headlinks.first()!.attr("href")
+        }
 
         if appleDeveloperSpecialHandling || allSpecialHandling {
             if canonical != nil && canonical!.hasPrefix("https://developer.apple.com") {
@@ -485,39 +489,39 @@ public class Readability {
     private func getArticleTitle() -> Element {
         var curTitle = ""
         var origTitle = ""
-			  let h1s = try! dom.getElementsByTag("h1")
+        let h1s = try! dom.getElementsByTag("h1")
 
-			if h1s.count > 0 {
-				origTitle = getInnerText(h1s.first()!);
-				curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-			} else {
-				do {
-					origTitle = try getInnerText(dom.getElementsByTag("title").array()[0])
-					curTitle = origTitle
+        if h1s.count > 0 {
+            origTitle = getInnerText(h1s.first()!)
+            curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            do {
+                origTitle = try getInnerText(dom.getElementsByTag("title").array()[0])
+                curTitle = origTitle
 
-					if curTitle.matches("/ [|\\-—] /") {
-						curTitle = origTitle.replacingOccurrences(of: "/(.*)[|\\-—] .*/i", with: "$1")
+                if curTitle.matches("/ [|\\-—] /") {
+                    curTitle = origTitle.replacingOccurrences(of: "/(.*)[|\\-—] .*/i", with: "$1")
 
-						if curTitle.split(separator: " ").count < 3 {
-							curTitle = origTitle.replacingOccurrences(of: "/[^|\\-—]*[|\\-—](.*)/i", with: "$1")
-						}
-					} else if curTitle.range(of: ": ") != nil {
-						curTitle = origTitle.replacingOccurrences(of: "/.*:(.*)/i", with: "$1")
+                    if curTitle.split(separator: " ").count < 3 {
+                        curTitle = origTitle.replacingOccurrences(of: "/[^|\\-—]*[|\\-—](.*)/i", with: "$1")
+                    }
+                } else if curTitle.range(of: ": ") != nil {
+                    curTitle = origTitle.replacingOccurrences(of: "/.*:(.*)/i", with: "$1")
 
-						if curTitle.split(separator: " ").count < 3 {
-							curTitle = origTitle.replacingOccurrences(of: "/[^:]*:(.*)/i", with: "$1")
-						}
-					}
-				} catch let error {
-					print(error)
-				}
+                    if curTitle.split(separator: " ").count < 3 {
+                        curTitle = origTitle.replacingOccurrences(of: "/[^:]*:(.*)/i", with: "$1")
+                    }
+                }
+            } catch let error {
+                print(error)
+            }
 
-				curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
-				if curTitle.split(separator: " ").count <= 4 {
-					curTitle = origTitle
-				}
-			}
+            if curTitle.split(separator: " ").count <= 4 {
+                curTitle = origTitle
+            }
+        }
 
         articleTitle = try! dom.createElement("h1")
         try! articleTitle?.html(curTitle)

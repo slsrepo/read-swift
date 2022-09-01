@@ -62,7 +62,7 @@ public class Readability {
     public var canonical:String? = nil
 
     public var allSpecialHandling = false // if true, overrides all special handling booleans
-
+    public var githubSpecialHandling = false // perform special handling on github repos
     public var stackExchangeSpecialHandling = false // perform special functions on StackExchange pages
     public var acceptedAnswerOnly = false // on a stack site, only grab accepted answer
     public var includeAnswerComments = false // on a stack site, include comments in the output
@@ -163,8 +163,8 @@ public class Readability {
         let main = try! dom.getElementsByClass("inner-content").first()!
         let title = getInnerText(try! main.select("#question-header h1 a.question-hyperlink").first()!)
 
-        let articleTitle = try! dom.createElement("h1")
-        try! articleTitle.text(title)
+        let articleTitleh1 = try! dom.createElement("h1")
+        try! articleTitleh1.text(title)
 
         let question = try! main.select("#question")
         let questionContent = try! question.select(".js-post-body").array()[0]
@@ -232,7 +232,7 @@ public class Readability {
         try! innerDiv.attr("id", "readInner")
 
         /* Glue the structure of our document together. */
-        try! innerDiv.appendChild(articleTitle)
+        try! innerDiv.appendChild(articleTitleh1)
         try! innerDiv.appendChild(articleContent)
         try! overlay.appendChild(innerDiv)
 
@@ -244,7 +244,7 @@ public class Readability {
         postProcessContent(articleContent)
 
         // Set title and content instance variables
-        self.articleTitle = articleTitle
+        self.articleTitle = articleTitleh1
         self.articleContent = articleContent
 
         return success
@@ -288,8 +288,8 @@ public class Readability {
         let question = try! main.select("#question-container").first()!
         let title = getInnerText(try! question.select(".header h1.title").first()!)
 
-        let articleTitle = try! dom.createElement("h1")
-        try! articleTitle.text(title)
+        let articleTitleh1 = try! dom.createElement("h1")
+        try! articleTitleh1.text(title)
 
         let questionContent = try! question.select("section.question .content .column-right .post-content").array()[0]
 
@@ -319,7 +319,7 @@ public class Readability {
         try! innerDiv.attr("id", "readInner")
 
         /* Glue the structure of our document together. */
-        try! innerDiv.appendChild(articleTitle)
+        try! innerDiv.appendChild(articleTitleh1)
         try! innerDiv.appendChild(articleContent)
         try! overlay.appendChild(innerDiv)
 
@@ -331,7 +331,7 @@ public class Readability {
         postProcessContent(articleContent)
 
         // Set title and content instance variables
-        self.articleTitle = articleTitle
+        self.articleTitle = articleTitleh1
         self.articleContent = articleContent
 
         return success
@@ -351,6 +351,22 @@ public class Readability {
      */
     public func getContent() -> Element? {
         return articleContent
+    }
+
+    public func cleanGitHubTable(table:Element) -> Element {
+        // TODO: GitHub displays code files as tables instead of pre/code and it does NOT translate well
+        // Need to get the innerText, but the SwiftSoup getInnerText method loses whitespace
+//        let tds = try! table.select("td:last-of-type")
+//        var code = ""
+//        for td in tds {
+//            code += try! td.html() + "\n"
+//        }
+//        let pre = try! dom.createElement("pre")
+//        let block = try! dom.createElement("code")
+//        try! block.text(code)
+//        try! pre.append(block.outerHtml())
+//        return pre
+        return table;
     }
 
     /**
@@ -374,6 +390,15 @@ public class Readability {
 
         if headlinks.count > 0 {
             canonical = try! headlinks.first()!.attr("href")
+        }
+
+        if githubSpecialHandling || allSpecialHandling {
+            if canonical != nil && canonical!.hasPrefix("https://github.com") {
+                let tables = try! dom.select(".repository-content table.highlight")
+                for table in tables {
+                    try! table.replaceWith(cleanGitHubTable(table: table))
+                }
+            }
         }
 
         if stackExchangeSpecialHandling || allSpecialHandling {
@@ -412,7 +437,7 @@ public class Readability {
         /* Build readability's DOM tree */
         let overlay = try! dom.createElement("div")
         let innerDiv = try! dom.createElement("div")
-        let articleTitle = getArticleTitle()
+        var articleTitle = getArticleTitle()
         var articleContent = grabArticle()
 
         if articleContent == nil {
@@ -442,8 +467,14 @@ public class Readability {
         postProcessContent(articleContent!)
 
         // Set title and content instance variables
-        self.articleTitle = articleTitle
         self.articleContent = articleContent
+        if let h1s = try! self.articleTitle?.select("h1") {
+            if h1s.count > 0 {
+                articleTitle = h1s.first()!
+            }
+        } else {
+            self.articleTitle = articleTitle
+        }
 
         return success
     }
@@ -496,7 +527,11 @@ public class Readability {
         let h1s = try! dom.getElementsByTag("h1")
 
         if h1s.count > 0 {
-            origTitle = getInnerText(h1s.first()!)
+            if h1s.count > 1 {
+                origTitle = getInnerText(h1s[1])
+            } else {
+                origTitle = getInnerText(h1s.first()!)
+            }
             curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         } else {
             do {

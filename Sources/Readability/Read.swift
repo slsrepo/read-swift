@@ -59,7 +59,7 @@ public class Readability {
     public var html: String
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
-    public var canonical:String? = nil
+    public var canonical: String?
 
     public var allSpecialHandling = false // if true, overrides all special handling booleans
     public var githubSpecialHandling = false // perform special handling on github repos
@@ -244,7 +244,7 @@ public class Readability {
         postProcessContent(articleContent)
 
         // Set title and content instance variables
-        self.articleTitle = articleTitleh1
+        articleTitle = articleTitleh1
         self.articleContent = articleContent
 
         return success
@@ -331,7 +331,7 @@ public class Readability {
         postProcessContent(articleContent)
 
         // Set title and content instance variables
-        self.articleTitle = articleTitleh1
+        articleTitle = articleTitleh1
         self.articleContent = articleContent
 
         return success
@@ -353,7 +353,7 @@ public class Readability {
         return articleContent
     }
 
-    public func cleanGitHubTable(table:Element) -> Element {
+    public func cleanGitHubTable(table: Element) -> Element {
         // TODO: GitHub displays code files as tables instead of pre/code and it does NOT translate well
         // Need to get the innerText, but the SwiftSoup getInnerText method loses whitespace
 //        let tds = try! table.select("td:last-of-type")
@@ -366,7 +366,7 @@ public class Readability {
 //        try! block.text(code)
 //        try! pre.append(block.outerHtml())
 //        return pre
-        return table;
+        return table
     }
 
     /**
@@ -468,12 +468,14 @@ public class Readability {
 
         // Set title and content instance variables
         self.articleContent = articleContent
+        self.articleTitle = articleTitle
         if let h1s = try! self.articleTitle?.select("h1") {
-            if h1s.count > 0 {
-                articleTitle = h1s.first()!
+            if h1s.count == 1 {
+                let h1 = h1s.first()!
+                let articleTitle = try! dom.createElement("h1")
+                try! articleTitle.text(getInnerText(h1))
+                self.articleTitle = articleTitle
             }
-        } else {
-            self.articleTitle = articleTitle
         }
 
         return success
@@ -524,52 +526,50 @@ public class Readability {
     private func getArticleTitle() -> Element? {
         var curTitle = ""
         var origTitle = ""
-        let h1s = try! dom.getElementsByTag("h1")
-
-        if h1s.count > 0 {
-            if h1s.count > 1 {
-                origTitle = getInnerText(h1s[1])
-            } else {
-                origTitle = getInnerText(h1s.first()!)
-            }
-            curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        } else {
-            do {
-                let titleEls = try! dom.getElementsByTag("title")
-                if titleEls.count > 0 {
-                    origTitle = getInnerText(titleEls[0])
-                }
-
-                curTitle = origTitle
-
-                if curTitle.matches("/ [|\\-—] /") {
-                    curTitle = origTitle.replacingOccurrences(of: "/(.*)[|\\-—] .*/i", with: "$1")
-
-                    if curTitle.split(separator: " ").count < 3 {
-                        curTitle = origTitle.replacingOccurrences(of: "/[^|\\-—]*[|\\-—](.*)/i", with: "$1")
-                    }
-                } else if curTitle.range(of: ": ") != nil {
-                    curTitle = origTitle.replacingOccurrences(of: "/.*:(.*)/i", with: "$1")
-
-                    if curTitle.split(separator: " ").count < 3 {
-                        curTitle = origTitle.replacingOccurrences(of: "/[^:]*:(.*)/i", with: "$1")
-                    }
-                }
+        do {
+            let titleEls = try! dom.getElementsByTag("title")
+            if titleEls.count > 0 {
+                origTitle = getInnerText(titleEls[0])
             }
 
-            curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            curTitle = origTitle
 
-            if curTitle.split(separator: " ").count <= 4 {
-                curTitle = origTitle
+            if curTitle.matches(#" [|\-–] "#) {
+                curTitle = origTitle.replacingOccurrences(of: #"(.*)[|\-–] .*"#, with: "$1", options: .regularExpression)
+
+                if curTitle.split(separator: " ").count < 3 {
+                    curTitle = origTitle.replacingOccurrences(of: #"[^|\-—]*[|\-—](.*)$"#, with: "$1", options: .regularExpression)
+                }
             }
         }
+
+        curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if curTitle.split(separator: " ").count <= 4 {
+            curTitle = origTitle
+        }
+
         if !curTitle.isEmpty {
             articleTitle = try! dom.createElement("h1")
             try! articleTitle?.html(curTitle)
 
             return articleTitle!
         } else {
-            return nil
+            let h1s = try! dom.getElementsByTag("h1")
+            if h1s.count > 0 {
+                if h1s.count > 1 {
+                    origTitle = getInnerText(h1s[1])
+                } else {
+                    origTitle = getInnerText(h1s.first()!)
+                }
+                curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                articleTitle = try! dom.createElement("h1")
+                try! articleTitle?.html(curTitle)
+
+                return articleTitle
+            } else {
+                return nil
+            }
         }
     }
 

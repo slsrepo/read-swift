@@ -59,6 +59,7 @@ public class Readability {
     public var html: String
     public var debug = false
     public var lightClean = true // preserves more content (experimental) added 2012-09-19
+    public var canonical:String? = nil
 
     public var allSpecialHandling = false // if true, overrides all special handling booleans
 
@@ -369,16 +370,16 @@ public class Readability {
             return false
         }
 
+        let headlinks = try! dom.select("head > link[rel=canonical]")
+
+        if headlinks.count > 0 {
+            canonical = try! headlinks.first()!.attr("href")
+        }
+
         if stackExchangeSpecialHandling || allSpecialHandling {
             if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
                 return stackOverflow()
             }
-        }
-
-        let headlinks = try! dom.select("head > link[rel=canonical]")
-        var canonical: String?
-        if headlinks.count > 0 {
-            canonical = try! headlinks.first()!.attr("href")
         }
 
         if appleDeveloperSpecialHandling || allSpecialHandling {

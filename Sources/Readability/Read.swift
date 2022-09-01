@@ -561,6 +561,12 @@ public class Readability {
             try! tag.parent()?.removeChild(tag)
         }
 
+        // Remove aria-hidden elements
+        let hiddenTags = try! dom.getElementsByAttribute("aria-hidden")
+        for tag in hiddenTags {
+            try! tag.parent()?.removeChild(tag)
+        }
+
         /* Turn all double br"s into p"s */
         /* Note, this is pretty costly as far as processing goes. Maybe optimize later. */
         // document.body.innerHTML = document.body.innerHTML.replace(readability.regexps.replaceBrs, "</p><p>").replace(readability.regexps.replaceFonts, "<$1span>");

@@ -426,7 +426,10 @@ public class Readability {
         try! innerDiv.attr("id", "readInner")
 
         /* Glue the structure of our document together. */
-        try! innerDiv.appendChild(articleTitle)
+        if articleTitle != nil {
+            try! innerDiv.appendChild(articleTitle!)
+        }
+
         try! innerDiv.appendChild(articleContent!)
         try! overlay.appendChild(innerDiv)
 
@@ -486,7 +489,7 @@ public class Readability {
      *
      * @return DOMElement
      */
-    private func getArticleTitle() -> Element {
+    private func getArticleTitle() -> Element? {
         var curTitle = ""
         var origTitle = ""
         let h1s = try! dom.getElementsByTag("h1")
@@ -496,7 +499,11 @@ public class Readability {
             curTitle = origTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         } else {
             do {
-                origTitle = try getInnerText(dom.getElementsByTag("title").array()[0])
+                let titleEls = try! dom.getElementsByTag("title")
+                if titleEls.count > 0 {
+                    origTitle = getInnerText(titleEls[0])
+                }
+
                 curTitle = origTitle
 
                 if curTitle.matches("/ [|\\-—] /") {
@@ -512,8 +519,6 @@ public class Readability {
                         curTitle = origTitle.replacingOccurrences(of: "/[^:]*:(.*)/i", with: "$1")
                     }
                 }
-            } catch let error {
-                print(error)
             }
 
             curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -522,11 +527,14 @@ public class Readability {
                 curTitle = origTitle
             }
         }
+        if !curTitle.isEmpty {
+            articleTitle = try! dom.createElement("h1")
+            try! articleTitle?.html(curTitle)
 
-        articleTitle = try! dom.createElement("h1")
-        try! articleTitle?.html(curTitle)
-
-        return articleTitle!
+            return articleTitle!
+        } else {
+            return nil
+        }
     }
 
     /**

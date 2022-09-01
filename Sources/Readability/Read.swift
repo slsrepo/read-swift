@@ -392,14 +392,14 @@ public class Readability {
             canonical = try! headlinks.first()!.attr("href")
         }
 
-        if githubSpecialHandling || allSpecialHandling {
-            if canonical != nil && canonical!.hasPrefix("https://github.com") {
-                let tables = try! dom.select(".repository-content table.highlight")
-                for table in tables {
-                    try! table.replaceWith(cleanGitHubTable(table: table))
-                }
-            }
-        }
+        // if githubSpecialHandling || allSpecialHandling {
+        //     if canonical != nil && canonical!.hasPrefix("https://github.com") {
+        //         let tables = try! dom.select(".repository-content table.highlight")
+        //         for table in tables {
+        //             try! table.replaceWith(cleanGitHubTable(table: table))
+        //         }
+        //     }
+        // }
 
         if stackExchangeSpecialHandling || allSpecialHandling {
             if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {

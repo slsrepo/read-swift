@@ -86,7 +86,7 @@ public class Readability {
      **/
     public var regexps = [
         "unlikelyCandidates": "/combx|comment|community|disqus|extra|header|menu|remark|rss|shoutbox|sidebar|sponsor|ad-break|agegate|pagination|pager|popup/i",
-        "okMaybeItsACandidate": "/and|article|body|column|main|shadow/i",
+        "okMaybeItsACandidate": "/and|article|body|column|main|shadow|instapaper_body|post/i",
         "positive": "/article|body|content|entry|hentry|main|page|attachment|pagination|post|text|footnote|blog|story/i",
         "negative": "/combx|comment|com-|contact|foot|footer|_nav|masthead|media|meta|outbrain|promo|related|scroll|shoutbox|sidebar|sponsor|shopping|tags|tool|widget/i",
         "divToPElements": "/<(a|blockquote|dl|div|img|ol|p|pre|table|ul)/i",
@@ -354,19 +354,20 @@ public class Readability {
     }
 
     public func cleanGitHubTable(table: Element) -> Element {
-        // TODO: GitHub displays code files as tables instead of pre/code and it does NOT translate well
-        // Need to get the innerText, but the SwiftSoup getInnerText method loses whitespace
-//        let tds = try! table.select("td:last-of-type")
-//        var code = ""
-//        for td in tds {
-//            code += try! td.html() + "\n"
-//        }
+        return table
+//         TODO: GitHub displays code files as tables instead of pre/code and it does NOT translate well
+//         Need to get the innerText, but the SwiftSoup getInnerText method loses whitespace
+        // The .text() method removes whitespace, so getInnerText has no chance to preserve it
+//        var inner = getInnerTextWithWhitespace(table)
+//        inner = inner.replacingOccurrences(of: #"((\n *){3}(?=\n))"#, with: "", options: .regularExpression)
+//        inner = inner.replacingOccurrences(of: #"\t"#, with: "    ", options: .regularExpression)
+//        inner = inner.replacingOccurrences(of: #"(?<=^|\n) {10}"#, with: "", options: .regularExpression)
+//
 //        let pre = try! dom.createElement("pre")
 //        let block = try! dom.createElement("code")
-//        try! block.text(code)
+//        try! block.text(inner)
 //        try! pre.append(block.outerHtml())
 //        return pre
-        return table
     }
 
     /**
@@ -392,14 +393,14 @@ public class Readability {
             canonical = try! headlinks.first()!.attr("href")
         }
 
-        // if githubSpecialHandling || allSpecialHandling {
-        //     if canonical != nil && canonical!.hasPrefix("https://github.com") {
-        //         let tables = try! dom.select(".repository-content table.highlight")
-        //         for table in tables {
-        //             try! table.replaceWith(cleanGitHubTable(table: table))
-        //         }
-        //     }
-        // }
+//        if githubSpecialHandling || allSpecialHandling {
+//             if canonical != nil && canonical!.hasPrefix("https://github.com") {
+//                 let tables = try! dom.select(".repository-content table.highlight")
+//                 for table in tables {
+//                     try! table.replaceWith(cleanGitHubTable(table: table))
+//                 }
+//             }
+//         }
 
         if stackExchangeSpecialHandling || allSpecialHandling {
             if try! dom.getElementsByTag("body").array()[0].hasClass("question-page") {
@@ -437,7 +438,7 @@ public class Readability {
         /* Build readability's DOM tree */
         let overlay = try! dom.createElement("div")
         let innerDiv = try! dom.createElement("div")
-        var articleTitle = getArticleTitle()
+        let articleTitle = getArticleTitle()
         var articleContent = grabArticle()
 
         if articleContent == nil {
@@ -452,9 +453,9 @@ public class Readability {
         try! innerDiv.attr("id", "readInner")
 
         /* Glue the structure of our document together. */
-        if articleTitle != nil {
-            try! innerDiv.appendChild(articleTitle!)
-        }
+//        if articleTitle != nil {
+//            try! innerDiv.appendChild(articleTitle!)
+//        }
 
         try! innerDiv.appendChild(articleContent!)
         try! overlay.appendChild(innerDiv)

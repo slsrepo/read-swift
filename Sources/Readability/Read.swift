@@ -453,9 +453,9 @@ public class Readability {
         try! innerDiv.attr("id", "readInner")
 
         /* Glue the structure of our document together. */
-//        if articleTitle != nil {
-//            try! innerDiv.appendChild(articleTitle!)
-//        }
+        if articleTitle != nil {
+            try! innerDiv.appendChild(articleTitle!)
+        }
 
         try! innerDiv.appendChild(articleContent!)
         try! overlay.appendChild(innerDiv)

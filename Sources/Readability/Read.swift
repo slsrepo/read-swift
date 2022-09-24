@@ -536,19 +536,23 @@ public class Readability {
             curTitle = origTitle
 
             if curTitle.matches(#" [|\-–] "#) {
-                curTitle = origTitle.replacingOccurrences(of: #"(.*)[|\-–] .*"#, with: "$1", options: .regularExpression)
+                curTitle = origTitle.replacingOccurrences(of: #"(.*?)[|\-–] .*"#, with: "$1", options: .regularExpression)
 
                 if curTitle.split(separator: " ").count < 3 {
-                    curTitle = origTitle.replacingOccurrences(of: #"[^|\-—]*[|\-—](.*)$"#, with: "$1", options: .regularExpression)
+                    curTitle = origTitle.replacingOccurrences(of: #".*?[|\-—](.*)$"#, with: "$1", options: .regularExpression)
                 }
             }
         }
 
         curTitle = curTitle.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if curTitle.split(separator: " ").count <= 4 {
+        if curTitle.split(separator: " ").count <= 3 {
             curTitle = origTitle
         }
+
+        curTitle = curTitle.replacingOccurrences(of: #"[’‘]"#, with: "'", options: .regularExpression)
+        curTitle = curTitle.replacingOccurrences(of: #"[”“]"#, with: "\"", options: .regularExpression)
+        curTitle = curTitle.replacingOccurrences(of: #"[–—]"#, with: "--", options: .regularExpression)
 
         if !curTitle.isEmpty {
             articleTitle = try! dom.createElement("h1")

@@ -31,7 +31,7 @@ extension String {
     ///
     /// - returns: The NSRegularExpression.
     func toRegex() -> NSRegularExpression {
-        var pattern: NSRegularExpression = NSRegularExpression()
+        var pattern: NSRegularExpression = try! NSRegularExpression(pattern: "")
 
         do {
             try pattern = NSRegularExpression(pattern: self, options: .anchorsMatchLines)
